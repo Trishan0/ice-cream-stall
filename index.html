@@ -9,7 +9,10 @@
 *{box-sizing:border-box;margin:0;padding:0}
 body{background:#0f0f0f;color:#e8e8e8;font-family:'IBM Plex Sans',sans-serif;min-height:100vh}
 header{display:flex;justify-content:space-between;align-items:center;padding:14px 20px;border-bottom:1px solid #2a2a2a;position:sticky;top:0;background:#0f0f0f;z-index:10}
-.header-title{font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#888}
+.header-title{font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#888;display:flex;align-items:center;gap:6px}
+.sync-dot{width:8px;height:8px;border-radius:50%;background:#555;display:inline-block;flex-shrink:0;transition:background .3s}
+.sync-dot.live{background:#2ecc71;box-shadow:0 0 6px #2ecc71}
+.sync-dot.err{background:#e74c3c}
 .header-actions{display:flex;gap:8px}
 .btn-sm{font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;padding:6px 12px;border-radius:4px;border:1px solid #333;background:transparent;color:#888;cursor:pointer;transition:all .15s}
 .btn-sm:hover{background:#1a1a1a;color:#e8e8e8;border-color:#555}
@@ -28,9 +31,10 @@ header{display:flex;justify-content:space-between;align-items:center;padding:14p
 .count-area{display:flex;align-items:center;gap:12px}
 .count-num{font-family:'IBM Plex Mono',monospace;font-size:52px;font-weight:700;line-height:1;min-width:72px;letter-spacing:-2px;color:#e8e8e8;transition:opacity .15s}
 .count-btns{display:flex;flex-direction:column;gap:6px}
-.btn-count{width:38px;height:38px;border-radius:6px;border:1px solid #333;background:transparent;color:#e8e8e8;font-family:'IBM Plex Mono',monospace;cursor:pointer;display:flex;align-items:center;justify-content:center;user-select:none;transition:all .1s;-webkit-tap-highlight-color:transparent;font-size:20px}
+.btn-count{width:38px;height:38px;border-radius:6px;border:1px solid #333;background:transparent;color:#e8e8e8;font-family:'IBM Plex Mono',monospace;cursor:pointer;display:flex;align-items:center;justify-content:center;user-select:none;transition:all .1s;-webkit-tap-highlight-color:transparent}
 .btn-count:active{transform:scale(.9)}
 .btn-plus{font-size:24px;font-weight:300}
+.btn-minus{font-size:20px}
 .btn-minus:hover{background:#2a2a2a;border-color:#555}
 .card-bottom{display:flex;justify-content:space-between;align-items:center;padding-top:10px;border-top:1px solid #2a2a2a}
 .sub-label{font-family:'IBM Plex Mono',monospace;font-size:9px;text-transform:uppercase;letter-spacing:.1em;color:#555}
@@ -64,9 +68,12 @@ header{display:flex;justify-content:space-between;align-items:center;padding:14p
 <body>
 
 <header>
-  <span class="header-title">🍦 Cone Counter</span>
+  <span class="header-title">
+    <span class="sync-dot" id="sync-dot"></span>
+    🍦 Cone Counter
+  </span>
   <div class="header-actions">
-    <button class="btn-sm" id="price-btn" onclick="toggleConfig()">Prices</button>
+    <button class="btn-sm" onclick="toggleConfig()">Prices</button>
     <button class="btn-sm" onclick="document.getElementById('reset-modal').classList.add('open')">Reset</button>
   </div>
 </header>
@@ -89,17 +96,17 @@ header{display:flex;justify-content:space-between;align-items:center;padding:14p
 <div class="config-panel" id="config-panel">
   <div class="config-title">⚙ Price Configuration (LKR)</div>
   <div class="config-grid">
-    <div><div class="config-label">Vanilla</div><input class="config-input" type="number" id="p-vanilla" value="100" min="0" oninput="updatePrices()"></div>
-    <div><div class="config-label">Chocolate</div><input class="config-input" type="number" id="p-choco" value="120" min="0" oninput="updatePrices()"></div>
-    <div><div class="config-label">Fruit &amp; Nut</div><input class="config-input" type="number" id="p-fruitnut" value="130" min="0" oninput="updatePrices()"></div>
-    <div><div class="config-label">Mix</div><input class="config-input" type="number" id="p-mix" value="130" min="0" oninput="updatePrices()"></div>
+    <div><div class="config-label">Vanilla</div><input class="config-input" type="number" id="p-vanilla" value="100" min="0" oninput="pushPrices()"></div>
+    <div><div class="config-label">Chocolate</div><input class="config-input" type="number" id="p-choco" value="120" min="0" oninput="pushPrices()"></div>
+    <div><div class="config-label">Fruit &amp; Nut</div><input class="config-input" type="number" id="p-fruitnut" value="130" min="0" oninput="pushPrices()"></div>
+    <div><div class="config-label">Mix</div><input class="config-input" type="number" id="p-mix" value="130" min="0" oninput="pushPrices()"></div>
   </div>
 </div>
 
 <div class="modal-bg" id="reset-modal">
   <div class="modal">
     <h3>Reset all counts?</h3>
-    <p>All sold counts will go back to zero. This cannot be undone.</p>
+    <p>All sold counts will go back to zero for <strong>everyone</strong>. This cannot be undone.</p>
     <div class="modal-btns">
       <button class="cancel" onclick="document.getElementById('reset-modal').classList.remove('open')">Cancel</button>
       <button class="confirm" onclick="doReset()">Reset</button>
@@ -107,28 +114,48 @@ header{display:flex;justify-content:space-between;align-items:center;padding:14p
   </div>
 </div>
 
-<script>
-var FLAVORS = [
+<script type="module">
+import { initializeApp }   from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getDatabase, ref, onValue, runTransaction, set }
+                           from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+
+// Firebase config
+const firebaseConfig = {
+  apiKey:            "AIzaSyDbCLKLA5AWD1d_QmWcjNhkVI_hXbBOUUM",
+  authDomain:        "ice-cream-stall.firebaseapp.com",
+  databaseURL:       "https://ice-cream-stall-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId:         "ice-cream-stall",
+  storageBucket:     "ice-cream-stall.firebasestorage.app",
+  messagingSenderId: "463541632991",
+  appId:             "1:463541632991:web:b53aaa7c5fe65cc205ce6a"
+};
+
+const app = initializeApp(firebaseConfig);
+const db  = getDatabase(app);
+
+const FLAVORS = [
   { key:'vanilla',  label:'Vanilla',     desc:'2 scoops / waffle cone', color:'#f5d87e', bg:'#1e1a0f' },
   { key:'choco',    label:'Chocolate',   desc:'2 scoops / waffle cone', color:'#c4773b', bg:'#1a1208' },
   { key:'fruitnut', label:'Fruit & Nut', desc:'2 scoops / waffle cone', color:'#e0607e', bg:'#1a0c0f' },
   { key:'mix',      label:'Mix',         desc:'choco + vanilla scoop',  color:'#9b7fe8', bg:'#120f1a' }
 ];
 
-var BASE = { vanilla:400, choco:400, fruitnut:200 };
-var counts = { vanilla:0, choco:0, fruitnut:0, mix:0 };
-var prices = { vanilla:100, choco:120, fruitnut:130, mix:130 };
+const BASE = { vanilla:400, choco:400, fruitnut:200 };
+
+// Local mirror – updated by Firebase listener
+let counts = { vanilla:0, choco:0, fruitnut:0, mix:0 };
+let prices = { vanilla:100, choco:120, fruitnut:130, mix:130 };
 
 function usedScoops() {
   return {
     vanilla:  counts.vanilla * 2 + counts.mix,
-    choco:    counts.choco * 2   + counts.mix,
+    choco:    counts.choco   * 2 + counts.mix,
     fruitnut: counts.fruitnut * 2
   };
 }
 
 function remaining(key) {
-  var u = usedScoops();
+  const u = usedScoops();
   if (key === 'vanilla')  return Math.max(0, Math.floor((BASE.vanilla  - u.vanilla)  / 2));
   if (key === 'choco')    return Math.max(0, Math.floor((BASE.choco    - u.choco)    / 2));
   if (key === 'fruitnut') return Math.max(0, Math.floor((BASE.fruitnut - u.fruitnut) / 2));
@@ -137,7 +164,7 @@ function remaining(key) {
 }
 
 function canSell(key) {
-  var u = usedScoops();
+  const u = usedScoops();
   if (key === 'vanilla')  return (BASE.vanilla  - u.vanilla)  >= 2;
   if (key === 'choco')    return (BASE.choco    - u.choco)    >= 2;
   if (key === 'fruitnut') return (BASE.fruitnut - u.fruitnut) >= 2;
@@ -145,108 +172,151 @@ function canSell(key) {
   return false;
 }
 
-function fmt(n) { return 'LKR ' + n.toLocaleString(); }
+const fmt = n => 'LKR ' + Number(n).toLocaleString();
 
+// Build cards
 function buildCards() {
-  var grid = document.getElementById('cards-grid');
-  var html = '';
-  for (var i = 0; i < FLAVORS.length; i++) {
-    var f = FLAVORS[i];
-    var remBlock = f.key !== 'mix'
-      ? '<div class="rem-label">Remaining</div><div class="rem-val" id="rem-' + f.key + '">—</div>'
-      : '<div class="mix-note">uses vanilla<br>+ choco stock</div>';
-    html += '<div class="card" id="card-' + f.key + '" style="background:' + f.bg + '">'
-      + '<div class="card-accent" style="background:' + f.color + '"></div>'
-      + '<div class="card-top">'
-      +   '<div><div class="flavor-name" style="color:' + f.color + '">' + f.label + '</div>'
-      +   '<div class="flavor-desc">' + f.desc + '</div></div>'
-      +   '<div class="price-tag" id="ptag-' + f.key + '">' + fmt(prices[f.key]) + '</div>'
-      + '</div>'
-      + '<div class="count-area">'
-      +   '<div class="count-num" id="cnt-' + f.key + '">0</div>'
-      +   '<div class="count-btns">'
-      +     '<button class="btn-count btn-plus" data-key="' + f.key + '" data-color="' + f.color + '">+</button>'
-      +     '<button class="btn-count btn-minus" data-key="' + f.key + '">−</button>'
-      +   '</div>'
-      + '</div>'
-      + '<div class="card-bottom">'
-      +   '<div><div class="sub-label">Revenue</div><div class="sub-val" id="rev-' + f.key + '">LKR 0</div></div>'
-      +   '<div>' + remBlock + '</div>'
-      + '</div>'
-      + '</div>';
-  }
-  grid.innerHTML = html;
+  const grid = document.getElementById('cards-grid');
+  grid.innerHTML = FLAVORS.map(f => {
+    const remBlock = f.key !== 'mix'
+      ? `<div class="rem-label">Remaining</div><div class="rem-val" id="rem-${f.key}">—</div>`
+      : `<div class="mix-note">uses vanilla<br>+ choco stock</div>`;
+    return `
+    <div class="card" style="background:${f.bg}">
+      <div class="card-accent" style="background:${f.color}"></div>
+      <div class="card-top">
+        <div>
+          <div class="flavor-name" style="color:${f.color}">${f.label}</div>
+          <div class="flavor-desc">${f.desc}</div>
+        </div>
+        <div class="price-tag" id="ptag-${f.key}">${fmt(prices[f.key])}</div>
+      </div>
+      <div class="count-area">
+        <div class="count-num" id="cnt-${f.key}">0</div>
+        <div class="count-btns">
+          <button class="btn-count btn-plus" id="plus-${f.key}">+</button>
+          <button class="btn-count btn-minus" id="minus-${f.key}">−</button>
+        </div>
+      </div>
+      <div class="card-bottom">
+        <div>
+          <div class="sub-label">Revenue</div>
+          <div class="sub-val" id="rev-${f.key}">LKR 0</div>
+        </div>
+        <div>${remBlock}</div>
+      </div>
+    </div>`;
+  }).join('');
 
-  document.querySelectorAll('.btn-plus').forEach(function(btn) {
-    var c = btn.getAttribute('data-color');
-    btn.addEventListener('mouseenter', function() { btn.style.background = c; btn.style.color = '#000'; btn.style.borderColor = c; });
-    btn.addEventListener('mouseleave', function() { btn.style.background = ''; btn.style.color = '#e8e8e8'; btn.style.borderColor = '#333'; });
-    btn.addEventListener('click', function() { increment(btn.getAttribute('data-key')); });
-  });
-
-  document.querySelectorAll('.btn-minus').forEach(function(btn) {
-    btn.addEventListener('click', function() { decrement(btn.getAttribute('data-key')); });
+  FLAVORS.forEach(f => {
+    const plusBtn = document.getElementById('plus-' + f.key);
+    plusBtn.addEventListener('mouseenter', () => { plusBtn.style.background = f.color; plusBtn.style.color = '#000'; plusBtn.style.borderColor = f.color; });
+    plusBtn.addEventListener('mouseleave', () => { plusBtn.style.background = ''; plusBtn.style.color = '#e8e8e8'; plusBtn.style.borderColor = '#333'; });
+    plusBtn.addEventListener('click', () => increment(f.key));
+    document.getElementById('minus-' + f.key).addEventListener('click', () => decrement(f.key));
   });
 }
 
+// Firebase: listen to counts
+onValue(ref(db, 'counts'), snap => {
+  const data = snap.val() || {};
+  counts.vanilla  = data.vanilla  || 0;
+  counts.choco    = data.choco    || 0;
+  counts.fruitnut = data.fruitnut || 0;
+  counts.mix      = data.mix      || 0;
+  render();
+}, err => {
+  document.getElementById('sync-dot').className = 'sync-dot err';
+  console.error(err);
+});
+
+// Firebase: listen to prices
+onValue(ref(db, 'prices'), snap => {
+  const data = snap.val();
+  if (data) {
+    prices.vanilla  = data.vanilla  || 100;
+    prices.choco    = data.choco    || 120;
+    prices.fruitnut = data.fruitnut || 130;
+    prices.mix      = data.mix      || 130;
+    ['vanilla','choco','fruitnut','mix'].forEach(k => {
+      const el = document.getElementById('p-' + k);
+      if (el && document.activeElement !== el) el.value = prices[k];
+    });
+  }
+  render();
+});
+
+// Connection indicator
+onValue(ref(db, '.info/connected'), snap => {
+  document.getElementById('sync-dot').className = 'sync-dot ' + (snap.val() ? 'live' : 'err');
+});
+
+// Increment/Decrement using transactions — safe when multiple people tap at once
 function increment(key) {
   if (!canSell(key)) { alert('Not enough stock for ' + key + '!'); return; }
-  counts[key]++;
-  var el = document.getElementById('cnt-' + key);
-  el.classList.remove('flashed');
-  void el.offsetWidth;
-  el.classList.add('flashed');
-  render();
+  runTransaction(ref(db, 'counts/' + key), val => (val || 0) + 1);
 }
 
 function decrement(key) {
-  if (counts[key] > 0) { counts[key]--; render(); }
+  runTransaction(ref(db, 'counts/' + key), val => Math.max(0, (val || 0) - 1));
 }
 
-function updatePrices() {
-  ['vanilla','choco','fruitnut','mix'].forEach(function(k) {
-    var v = parseInt(document.getElementById('p-' + k).value, 10);
-    prices[k] = isNaN(v) ? 0 : v;
+// Push prices to Firebase so all devices see the same prices
+window.pushPrices = () => {
+  const p = {};
+  ['vanilla','choco','fruitnut','mix'].forEach(k => {
+    const v = parseInt(document.getElementById('p-' + k).value, 10);
+    p[k] = isNaN(v) ? 0 : v;
   });
-  render();
-}
+  set(ref(db, 'prices'), p);
+};
+
+// Reset — wipes counts for everyone
+window.doReset = () => {
+  set(ref(db, 'counts'), { vanilla:0, choco:0, fruitnut:0, mix:0 });
+  document.getElementById('reset-modal').classList.remove('open');
+};
+
+window.toggleConfig = () => {
+  const p = document.getElementById('config-panel');
+  p.style.display = p.style.display === 'block' ? 'none' : 'block';
+};
 
 function render() {
-  var totalCones = 0, totalRev = 0;
-  for (var i = 0; i < FLAVORS.length; i++) {
-    var f = FLAVORS[i];
-    var c = counts[f.key];
-    var rev = c * prices[f.key];
+  let totalCones = 0, totalRev = 0;
+  FLAVORS.forEach(f => {
+    const c   = counts[f.key];
+    const rev = c * prices[f.key];
     totalCones += c;
     totalRev   += rev;
-    document.getElementById('cnt-'  + f.key).textContent = c;
-    document.getElementById('rev-'  + f.key).textContent = fmt(rev);
-    document.getElementById('ptag-' + f.key).textContent = fmt(prices[f.key]);
-    if (f.key !== 'mix') {
-      var rem = remaining(f.key);
-      var el  = document.getElementById('rem-' + f.key);
-      el.textContent = rem;
-      el.style.color = rem <= 10 ? '#e74c3c' : rem <= 30 ? '#f39c12' : '#2ecc71';
+
+    const cntEl = document.getElementById('cnt-' + f.key);
+    if (cntEl && cntEl.textContent !== String(c)) {
+      cntEl.classList.remove('flashed');
+      void cntEl.offsetWidth;
+      cntEl.classList.add('flashed');
+      cntEl.textContent = c;
     }
-  }
+    const revEl = document.getElementById('rev-' + f.key);
+    if (revEl) revEl.textContent = fmt(rev);
+    const ptagEl = document.getElementById('ptag-' + f.key);
+    if (ptagEl) ptagEl.textContent = fmt(prices[f.key]);
+
+    if (f.key !== 'mix') {
+      const rem   = remaining(f.key);
+      const remEl = document.getElementById('rem-' + f.key);
+      if (remEl) {
+        remEl.textContent = rem;
+        remEl.style.color = rem <= 10 ? '#e74c3c' : rem <= 30 ? '#f39c12' : '#2ecc71';
+      }
+    }
+  });
   document.getElementById('t-cones').textContent  = totalCones + ' cones';
   document.getElementById('t-rev').textContent    = fmt(totalRev);
   document.getElementById('t-people').textContent = totalCones;
 }
 
-function toggleConfig() {
-  var p = document.getElementById('config-panel');
-  p.style.display = p.style.display === 'block' ? 'none' : 'block';
-}
-
-function doReset() {
-  counts.vanilla = 0; counts.choco = 0; counts.fruitnut = 0; counts.mix = 0;
-  document.getElementById('reset-modal').classList.remove('open');
-  render();
-}
-
 buildCards();
-render();
 </script>
 </body>
 </html>
