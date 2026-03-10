@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🍦 Cone Counter</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;600;700&family=IBM+Plex+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#0f0f0f;color:#e8e8e8;font-family:'IBM Plex Sans',sans-serif;min-height:100vh}
+header{display:flex;justify-content:space-between;align-items:center;padding:14px 20px;border-bottom:1px solid #2a2a2a;position:sticky;top:0;background:#0f0f0f;z-index:10}
+.header-title{font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#888}
+.header-actions{display:flex;gap:8px}
+.btn-sm{font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;padding:6px 12px;border-radius:4px;border:1px solid #333;background:transparent;color:#888;cursor:pointer;transition:all .15s}
+.btn-sm:hover{background:#1a1a1a;color:#e8e8e8;border-color:#555}
+.stock-bar{display:flex;border-bottom:1px solid #2a2a2a;overflow-x:auto}
+.stock-item{flex:1;min-width:110px;padding:10px 16px;border-right:1px solid #2a2a2a;text-align:center}
+.stock-item:last-child{border-right:none}
+.stock-label{font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:#555;margin-bottom:3px}
+.stock-val{font-family:'IBM Plex Mono',monospace;font-size:14px;font-weight:700}
+.cards-grid{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:#2a2a2a;border-bottom:1px solid #2a2a2a}
+.card{padding:20px 16px 16px;display:flex;flex-direction:column;gap:12px;position:relative;overflow:hidden}
+.card-accent{position:absolute;top:0;left:0;right:0;height:3px}
+.card-top{display:flex;justify-content:space-between;align-items:flex-start}
+.flavor-name{font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:700;letter-spacing:.1em;text-transform:uppercase}
+.flavor-desc{font-family:'IBM Plex Mono',monospace;font-size:10px;color:#555;margin-top:2px}
+.price-tag{font-family:'IBM Plex Mono',monospace;font-size:11px;color:#555}
+.count-area{display:flex;align-items:center;gap:12px}
+.count-num{font-family:'IBM Plex Mono',monospace;font-size:52px;font-weight:700;line-height:1;min-width:72px;letter-spacing:-2px;color:#e8e8e8;transition:opacity .15s}
+.count-btns{display:flex;flex-direction:column;gap:6px}
+.btn-count{width:38px;height:38px;border-radius:6px;border:1px solid #333;background:transparent;color:#e8e8e8;font-family:'IBM Plex Mono',monospace;cursor:pointer;display:flex;align-items:center;justify-content:center;user-select:none;transition:all .1s;-webkit-tap-highlight-color:transparent;font-size:20px}
+.btn-count:active{transform:scale(.9)}
+.btn-plus{font-size:24px;font-weight:300}
+.btn-minus:hover{background:#2a2a2a;border-color:#555}
+.card-bottom{display:flex;justify-content:space-between;align-items:center;padding-top:10px;border-top:1px solid #2a2a2a}
+.sub-label{font-family:'IBM Plex Mono',monospace;font-size:9px;text-transform:uppercase;letter-spacing:.1em;color:#555}
+.sub-val{font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:600;color:#999;margin-top:2px}
+.rem-label{font-family:'IBM Plex Mono',monospace;font-size:9px;text-transform:uppercase;letter-spacing:.08em;color:#555;text-align:right}
+.rem-val{font-family:'IBM Plex Mono',monospace;font-size:14px;font-weight:700;margin-top:2px;text-align:right}
+.mix-note{font-family:'IBM Plex Mono',monospace;font-size:9px;color:#444;text-align:right;line-height:1.5}
+.totals{display:flex;flex-wrap:wrap;gap:20px;padding:18px 20px;border-bottom:1px solid #2a2a2a;justify-content:space-between;align-items:center}
+.total-label{font-family:'IBM Plex Mono',monospace;font-size:9px;text-transform:uppercase;letter-spacing:.12em;color:#555;margin-bottom:4px}
+.total-val{font-family:'IBM Plex Mono',monospace;font-size:22px;font-weight:700}
+.config-panel{padding:16px 20px;border-bottom:1px solid #2a2a2a;display:none}
+.config-title{font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.15em;text-transform:uppercase;color:#555;margin-bottom:12px}
+.config-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.config-label{font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:#555;margin-bottom:5px}
+.config-input{background:#1a1a1a;border:1px solid #333;border-radius:4px;padding:7px 10px;font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:600;color:#e8e8e8;width:100%;outline:none}
+.config-input:focus{border-color:#555}
+.modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:200;align-items:center;justify-content:center}
+.modal-bg.open{display:flex}
+.modal{background:#1a1a1a;border:1px solid #333;border-radius:8px;padding:24px;max-width:300px;width:90%}
+.modal h3{font-family:'IBM Plex Mono',monospace;font-size:14px;font-weight:700;margin-bottom:10px}
+.modal p{font-size:13px;color:#888;margin-bottom:20px;line-height:1.6}
+.modal-btns{display:flex;gap:10px}
+.modal-btns button{flex:1;padding:10px;border-radius:5px;font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:700;cursor:pointer;border:1px solid #333;background:transparent;color:#e8e8e8;transition:all .15s}
+.modal-btns .confirm{background:#c0392b;border-color:#c0392b;color:#fff}
+.modal-btns .confirm:hover{background:#e74c3c}
+.modal-btns .cancel:hover{background:#0f0f0f}
+@keyframes flash{0%{opacity:1}50%{opacity:.3}100%{opacity:1}}
+.flashed{animation:flash .25s ease}
+</style>
+</head>
+<body>
+
+<header>
+  <span class="header-title">🍦 Cone Counter</span>
+  <div class="header-actions">
+    <button class="btn-sm" id="price-btn" onclick="toggleConfig()">Prices</button>
+    <button class="btn-sm" onclick="document.getElementById('reset-modal').classList.add('open')">Reset</button>
+  </div>
+</header>
+
+<div class="stock-bar">
+  <div class="stock-item"><div class="stock-label">Vanilla 4L</div><div class="stock-val" style="color:#f5d87e">4 × 50</div></div>
+  <div class="stock-item"><div class="stock-label">Choco 4L</div><div class="stock-val" style="color:#c4773b">4 × 50</div></div>
+  <div class="stock-item"><div class="stock-label">Fruit &amp; Nut 4L</div><div class="stock-val" style="color:#e0607e">2 × 50</div></div>
+  <div class="stock-item"><div class="stock-label">Total Cones</div><div class="stock-val" style="color:#888">500</div></div>
+</div>
+
+<div class="cards-grid" id="cards-grid"></div>
+
+<div class="totals">
+  <div><div class="total-label">Total Sold</div><div class="total-val" id="t-cones">0 cones</div></div>
+  <div><div class="total-label">Total Revenue</div><div class="total-val" id="t-rev" style="color:#f5d87e;font-size:26px">LKR 0</div></div>
+  <div><div class="total-label">People Served</div><div class="total-val" id="t-people">0</div></div>
+</div>
+
+<div class="config-panel" id="config-panel">
+  <div class="config-title">⚙ Price Configuration (LKR)</div>
+  <div class="config-grid">
+    <div><div class="config-label">Vanilla</div><input class="config-input" type="number" id="p-vanilla" value="100" min="0" oninput="updatePrices()"></div>
+    <div><div class="config-label">Chocolate</div><input class="config-input" type="number" id="p-choco" value="120" min="0" oninput="updatePrices()"></div>
+    <div><div class="config-label">Fruit &amp; Nut</div><input class="config-input" type="number" id="p-fruitnut" value="130" min="0" oninput="updatePrices()"></div>
+    <div><div class="config-label">Mix</div><input class="config-input" type="number" id="p-mix" value="130" min="0" oninput="updatePrices()"></div>
+  </div>
+</div>
+
+<div class="modal-bg" id="reset-modal">
+  <div class="modal">
+    <h3>Reset all counts?</h3>
+    <p>All sold counts will go back to zero. This cannot be undone.</p>
+    <div class="modal-btns">
+      <button class="cancel" onclick="document.getElementById('reset-modal').classList.remove('open')">Cancel</button>
+      <button class="confirm" onclick="doReset()">Reset</button>
+    </div>
+  </div>
+</div>
+
+<script>
+var FLAVORS = [
+  { key:'vanilla',  label:'Vanilla',     desc:'2 scoops / waffle cone', color:'#f5d87e', bg:'#1e1a0f' },
+  { key:'choco',    label:'Chocolate',   desc:'2 scoops / waffle cone', color:'#c4773b', bg:'#1a1208' },
+  { key:'fruitnut', label:'Fruit & Nut', desc:'2 scoops / waffle cone', color:'#e0607e', bg:'#1a0c0f' },
+  { key:'mix',      label:'Mix',         desc:'choco + vanilla scoop',  color:'#9b7fe8', bg:'#120f1a' }
+];
+
+var BASE = { vanilla:400, choco:400, fruitnut:200 };
+var counts = { vanilla:0, choco:0, fruitnut:0, mix:0 };
+var prices = { vanilla:100, choco:120, fruitnut:130, mix:130 };
+
+function usedScoops() {
+  return {
+    vanilla:  counts.vanilla * 2 + counts.mix,
+    choco:    counts.choco * 2   + counts.mix,
+    fruitnut: counts.fruitnut * 2
+  };
+}
+
+function remaining(key) {
+  var u = usedScoops();
+  if (key === 'vanilla')  return Math.max(0, Math.floor((BASE.vanilla  - u.vanilla)  / 2));
+  if (key === 'choco')    return Math.max(0, Math.floor((BASE.choco    - u.choco)    / 2));
+  if (key === 'fruitnut') return Math.max(0, Math.floor((BASE.fruitnut - u.fruitnut) / 2));
+  if (key === 'mix')      return Math.max(0, Math.min(BASE.vanilla - u.vanilla, BASE.choco - u.choco));
+  return 0;
+}
+
+function canSell(key) {
+  var u = usedScoops();
+  if (key === 'vanilla')  return (BASE.vanilla  - u.vanilla)  >= 2;
+  if (key === 'choco')    return (BASE.choco    - u.choco)    >= 2;
+  if (key === 'fruitnut') return (BASE.fruitnut - u.fruitnut) >= 2;
+  if (key === 'mix')      return (BASE.vanilla - u.vanilla) >= 1 && (BASE.choco - u.choco) >= 1;
+  return false;
+}
+
+function fmt(n) { return 'LKR ' + n.toLocaleString(); }
+
+function buildCards() {
+  var grid = document.getElementById('cards-grid');
+  var html = '';
+  for (var i = 0; i < FLAVORS.length; i++) {
+    var f = FLAVORS[i];
+    var remBlock = f.key !== 'mix'
+      ? '<div class="rem-label">Remaining</div><div class="rem-val" id="rem-' + f.key + '">—</div>'
+      : '<div class="mix-note">uses vanilla<br>+ choco stock</div>';
+    html += '<div class="card" id="card-' + f.key + '" style="background:' + f.bg + '">'
+      + '<div class="card-accent" style="background:' + f.color + '"></div>'
+      + '<div class="card-top">'
+      +   '<div><div class="flavor-name" style="color:' + f.color + '">' + f.label + '</div>'
+      +   '<div class="flavor-desc">' + f.desc + '</div></div>'
+      +   '<div class="price-tag" id="ptag-' + f.key + '">' + fmt(prices[f.key]) + '</div>'
+      + '</div>'
+      + '<div class="count-area">'
+      +   '<div class="count-num" id="cnt-' + f.key + '">0</div>'
+      +   '<div class="count-btns">'
+      +     '<button class="btn-count btn-plus" data-key="' + f.key + '" data-color="' + f.color + '">+</button>'
+      +     '<button class="btn-count btn-minus" data-key="' + f.key + '">−</button>'
+      +   '</div>'
+      + '</div>'
+      + '<div class="card-bottom">'
+      +   '<div><div class="sub-label">Revenue</div><div class="sub-val" id="rev-' + f.key + '">LKR 0</div></div>'
+      +   '<div>' + remBlock + '</div>'
+      + '</div>'
+      + '</div>';
+  }
+  grid.innerHTML = html;
+
+  document.querySelectorAll('.btn-plus').forEach(function(btn) {
+    var c = btn.getAttribute('data-color');
+    btn.addEventListener('mouseenter', function() { btn.style.background = c; btn.style.color = '#000'; btn.style.borderColor = c; });
+    btn.addEventListener('mouseleave', function() { btn.style.background = ''; btn.style.color = '#e8e8e8'; btn.style.borderColor = '#333'; });
+    btn.addEventListener('click', function() { increment(btn.getAttribute('data-key')); });
+  });
+
+  document.querySelectorAll('.btn-minus').forEach(function(btn) {
+    btn.addEventListener('click', function() { decrement(btn.getAttribute('data-key')); });
+  });
+}
+
+function increment(key) {
+  if (!canSell(key)) { alert('Not enough stock for ' + key + '!'); return; }
+  counts[key]++;
+  var el = document.getElementById('cnt-' + key);
+  el.classList.remove('flashed');
+  void el.offsetWidth;
+  el.classList.add('flashed');
+  render();
+}
+
+function decrement(key) {
+  if (counts[key] > 0) { counts[key]--; render(); }
+}
+
+function updatePrices() {
+  ['vanilla','choco','fruitnut','mix'].forEach(function(k) {
+    var v = parseInt(document.getElementById('p-' + k).value, 10);
+    prices[k] = isNaN(v) ? 0 : v;
+  });
+  render();
+}
+
+function render() {
+  var totalCones = 0, totalRev = 0;
+  for (var i = 0; i < FLAVORS.length; i++) {
+    var f = FLAVORS[i];
+    var c = counts[f.key];
+    var rev = c * prices[f.key];
+    totalCones += c;
+    totalRev   += rev;
+    document.getElementById('cnt-'  + f.key).textContent = c;
+    document.getElementById('rev-'  + f.key).textContent = fmt(rev);
+    document.getElementById('ptag-' + f.key).textContent = fmt(prices[f.key]);
+    if (f.key !== 'mix') {
+      var rem = remaining(f.key);
+      var el  = document.getElementById('rem-' + f.key);
+      el.textContent = rem;
+      el.style.color = rem <= 10 ? '#e74c3c' : rem <= 30 ? '#f39c12' : '#2ecc71';
+    }
+  }
+  document.getElementById('t-cones').textContent  = totalCones + ' cones';
+  document.getElementById('t-rev').textContent    = fmt(totalRev);
+  document.getElementById('t-people').textContent = totalCones;
+}
+
+function toggleConfig() {
+  var p = document.getElementById('config-panel');
+  p.style.display = p.style.display === 'block' ? 'none' : 'block';
+}
+
+function doReset() {
+  counts.vanilla = 0; counts.choco = 0; counts.fruitnut = 0; counts.mix = 0;
+  document.getElementById('reset-modal').classList.remove('open');
+  render();
+}
+
+buildCards();
+render();
+</script>
+</body>
+</html>
